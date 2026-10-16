@@ -17,6 +17,7 @@
   - **推理挡位**（`reasoningEfforts`）：声明模型支持的思考档位（off/minimal/low/medium/high/xhigh/max）及线上取值；
   - **输入模态**（`input`）：text / image；
   - **兼容性**（`compat`）：`supportsReasoningEffort` 开关与 `thinkingFormat` 线制格式。
+- API 密钥字段与官方模型页同一套口径：优先使用已保存的凭据，其次按顺序回落到启动环境、`$cwd/.env`、`$DSH_HOME/.env`；字段旁提供认证说明气泡与密钥显示/隐藏切换，并如实提示环境变量的检测结果。
 - 支持通过 `models.json` 元数据自动预填。可通过插件下载或自行下载并放到 `$DSH_HOME/models.json` 供插件使用。
     - **仅支持`https://models.dev/models.json`数据格式**。
 - 支持 **DeepSeek 账号**路由（`deepseek-account`）：置顶显示，无可用模型时整行隐藏；编辑卡片只含模型目录（账号不使用 API 密钥与地址）。
@@ -53,6 +54,10 @@ npm run build
 
 ## 版本历史
 
+- **1.3.3**
+    - **1.3.3-alpha.1**
+        - 💪同步官方API密钥保存&读取策略
+        - 💪其他UI优化
 - **1.3.2**
     - 🔥模型列表支持拖动排序
 - **1.3.1**

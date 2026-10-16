@@ -14,6 +14,8 @@ import { deriveKeyRef } from '../vendor/store.ts'
 import type { ModelsOperations } from '../vendor/operations.ts'
 import type { ModelDraft } from './compat.ts'
 import { compatFailureMessage, normalizeModelRow, validateModelRows } from './compat.ts'
+import type { ExtensionKey } from '../extension-meta.ts'
+import { ApiKeyInput } from './ApiKeyInput.tsx'
 import { ModelCatalog } from './ModelCatalog.tsx'
 import styles from './models-plus.module.css'
 
@@ -35,6 +37,8 @@ export interface CreateProviderCardProps {
   revision: number
   /** The Host operations this card writes and interrogates through. */
   operations: ModelsOperations
+  /** Section copy. */
+  t: (key: ExtensionKey) => string
   /** Disable writes (read-only settings provider). */
   readOnly: boolean
   /** Close the card; `changed` reports whether a provider was created. */
@@ -202,20 +206,19 @@ export function CreateProviderCard(props: CreateProviderCardProps): ReactNode {
             </select>
           </div>
           <div className={styles['field']}>
-            <label className={styles['fieldLabel']}>API 密钥</label>
-            <input
-              className={styles['input']}
-              type="password"
-              autoComplete="off"
+            <span className={styles['fieldLabel']}>{props.t('keyInput')}</span>
+            <ApiKeyInput
+              t={props.t}
               value={keyDraft}
-              placeholder="输入 API 密钥，或留空使用环境认证"
-              aria-label="API 密钥"
+              placeholder={props.t('keyPlaceholder')}
+              aria-label={props.t('keyInput')}
+              aria-invalid={keyFailure !== undefined}
               disabled={disabled}
               onChange={(event) => { setKeyDraft(event.target.value) }}
             />
             {keyFailure === undefined
               ? null
-              : <p className={styles['error']}>{keyFailure === 'keyBlank' ? '请输入 API 密钥；若该提供方以其他方式鉴权，可以留空。' : '此 API 密钥格式无效，请检查。'}</p>}
+              : <p className={styles['error']}>{props.t(keyFailure === 'keyBlank' ? 'keyBlankNew' : 'keyIllegalCharacters')}</p>}
           </div>
         </div>
         <div className={styles['tabPanel']} role="tabpanel" hidden={tab !== 'models'}>
@@ -231,7 +234,7 @@ export function CreateProviderCard(props: CreateProviderCardProps): ReactNode {
               api: protocol,
               ...keyValue.length === 0 ? {} : { apiKey: keyValue },
             }}
-            probeBlocked={keyFailure === 'keyBlank' ? '请输入 API 密钥；若该提供方以其他方式鉴权，可以留空。' : keyFailure}
+            probeBlocked={keyFailure === undefined ? undefined : props.t(keyFailure === 'keyBlank' ? 'keyBlankNew' : 'keyIllegalCharacters')}
             operations={operations}
             disabled={profileDisabled}
             onChange={setModels}

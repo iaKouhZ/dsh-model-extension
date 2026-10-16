@@ -363,7 +363,7 @@ export function ModelEntryPanel(props: ModelEntryPanelProps): ReactNode {
       </div>
 
       <div className={styles['extGroup']}>
-        <div className={styles['modelField']} style={{ padding: '0 4px' }}>
+        <div className={styles['capacityRow']}>
           {capacityField('contextWindow', '上下文窗口')}
           {capacityField('maxTokens', '最大输出 token')}
         </div>

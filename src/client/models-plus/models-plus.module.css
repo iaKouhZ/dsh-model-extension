@@ -7,6 +7,7 @@
 .title { margin: 0; font-size: 16px; line-height: 24px; font-weight: 500; color: var(--dsw-alias-label-primary); }
 .intro { margin: 0; font-size: 14px; line-height: 22px; color: var(--dsw-alias-label-tertiary); }
 .savedNotice { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-state-success-primary); }
+.notice { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-state-warn-label); }
 .error { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-state-error-primary); }
 
 .rows { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -38,6 +39,9 @@
 .linkButton { box-sizing: border-box; display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: none; border-radius: 14px; background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 12px; line-height: 18px; cursor: pointer; }
 .linkButton:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover); color: var(--dsw-alias-label-secondary); }
 .advancedHint { margin: 0; font-size: 12px; line-height: 18px; color: var(--dsw-alias-label-tertiary); }
+/* The credential help bubble: a small text button the official Tooltip anchors. */
+.helpButton { width: 16px; height: 16px; padding: 0; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 50%; corner-shape: round; background: transparent; color: var(--dsw-alias-label-tertiary); font: inherit; font-size: 11px; line-height: 15px; text-align: center; cursor: help; }
+.helpButton:hover, .helpButton:focus-visible { color: var(--dsw-alias-label-primary); border-color: var(--dsw-alias-label-tertiary); }
 .editorActions { display: flex; justify-content: flex-end; gap: 8px; }
 
 .addBlock { display: flex; flex-direction: column; gap: 12px; }
@@ -81,6 +85,9 @@
 .iconButton:disabled { cursor: default; opacity: 0.4; }
 .iconButtonDanger:hover:not(:disabled) { background: var(--dsw-alias-interactive-bg-hover-danger); color: var(--dsw-alias-state-error-primary); }
 .modelAdvanced { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; padding: 8px 4px 2px; }
+/* Capacities share one row: two fields of the same shape, side by side, wrapping
+   to stacked only when the panel is too narrow for both. */
+.capacityRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; padding: 0 4px; }
 .modelField { display: flex; flex-direction: column; gap: 4px; }
 .modelFieldLabel { color: var(--dsw-alias-label-tertiary); font-size: 12px; line-height: 18px; }
 .modelEmpty { padding: 12px; border: 1px dashed var(--dsw-alias-border-l3); border-radius: 8px; text-align: center; }
@@ -92,6 +99,13 @@ select.input { max-width: 240px; cursor: pointer; }
 .input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
 .input::placeholder { color: var(--dsw-alias-label-dimmed); }
 .input:disabled { opacity: 0.6; cursor: default; }
+/* Revealable credential field: the input keeps room for the toggle button. */
+.keyInput { position: relative; }
+.keyInputFilled { padding-right: 40px; }
+.keyToggle { position: absolute; inset: 1px 1px 1px auto; display: inline-flex; align-items: center; justify-content: center; width: 32px; padding: 0; border: none; border-radius: var(--dsw-radius-md); background: none; color: var(--dsw-alias-label-secondary); cursor: pointer; }
+.keyToggle:hover:not(:disabled) { color: var(--dsw-alias-label-primary); }
+.keyToggle:focus-visible { outline: var(--dsw-focus-ring-width) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: -2px; }
+.keyToggle:disabled { opacity: 0.6; cursor: default; }
 .selectInput { appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M3 4.5L6 7.5L9 4.5' stroke='%2381858C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 12px; }
 
 .deleteDialog { width: min(480px, 100%); }

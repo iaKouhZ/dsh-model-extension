@@ -11,8 +11,9 @@ import type { ReactNode } from 'react'
 import { Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ModelsSettingsStore, ProviderRow } from '../vendor/store.ts'
 import { deriveKeyRef, protocolChoices, providerUsable } from '../vendor/store.ts'
-import type { ModelsOperations } from './operations.ts'
-import type { SettingsSchemaOperations } from './schema-operations.ts'
+import type { LlmNativeAuth } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ModelsOperations } from '../vendor/operations.ts'
+import type { SettingsSchemaOperations } from '../vendor/schema-operations.ts'
 import { downloadMetadata } from './models-index.ts'
 import { ProviderEditor } from './ProviderEditor.tsx'
 import { CreateProviderCard } from './CreateProviderCard.tsx'
@@ -27,6 +28,12 @@ export interface EditorTarget {
   /** Writable credential identified under this page's conventional reference. */
   credentialRef?: string
   readonly declared?: boolean
+  /** The route's catalog endpoint (absent when the adapter reports none). */
+  defaultBaseURL?: string
+  /** Environment variables the provider uses to construct its endpoint. */
+  baseURLEnv?: readonly string[]
+  /** Authentication the route performs when its profile names no credential reference. */
+  nativeAuth?: LlmNativeAuth
 }
 
 /** Injected dependencies of {@link ModelsPlusSection} (slot `inject`). */
@@ -67,7 +74,11 @@ function targetOf(row: ProviderRow): EditorTarget {
     settingsNs: row.entry.settingsNs,
     settingsPath: row.entry.settingsPath,
     ...credentialRef === undefined ? {} : { credentialRef },
+    // Only declared routes may expose route-owned fields.
     ...row.entry.declared === true ? { declared: true } : {},
+    ...row.entry.defaultBaseURL === undefined ? {} : { defaultBaseURL: row.entry.defaultBaseURL },
+    ...row.entry.baseURLEnv === undefined ? {} : { baseURLEnv: row.entry.baseURLEnv },
+    ...row.entry.nativeAuth === undefined ? {} : { nativeAuth: row.entry.nativeAuth },
   }
 }
 
@@ -203,6 +214,9 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
   const addable = configurable.filter(row => !row.configured)
   const addTarget = adding ? editing : undefined
   const addNamespace = addTarget === undefined ? undefined : state.namespaces.get(addTarget.settingsNs)
+  const addRow = addTarget === undefined
+    ? undefined
+    : state.rows.find(row => row.entry.provider === addTarget.provider)
   const protocols = (() => {
     // The protocol choices a hand-declared route may name (schema read).
     return protocolChoices(state.namespaces.get('llm-pi-ai'), schema)
@@ -214,15 +228,24 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
     onClose: (changed: boolean) => void,
   ): ReactNode => {
     if (namespace === undefined) return null
+    // Credential state comes from the current snapshot rather than from the
+    // target captured when the card opened, so a refresh reaches the editor.
+    const row = state.rows.find(candidate => candidate.entry.provider === target.provider)
     return (
       <ProviderEditor
         provider={target.provider}
         displayName={target.displayName}
         settingsPath={target.settingsPath}
         {...target.declared === true ? { declared: true } : {}}
+        {...target.defaultBaseURL === undefined ? {} : { defaultBaseURL: target.defaultBaseURL }}
+        {...target.baseURLEnv === undefined ? {} : { baseURLEnv: target.baseURLEnv }}
+        {...target.nativeAuth === undefined ? {} : { nativeAuth: target.nativeAuth }}
+        {...row?.credential === undefined ? {} : { credential: row.credential }}
+        {...row?.credentialChecks === undefined ? {} : { credentialChecks: row.credentialChecks }}
         namespace={namespace}
         schema={schema}
         operations={operations}
+        t={t}
         readOnly={!state.writable}
         onClose={onClose}
       />
@@ -380,10 +403,16 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
                   key={addTarget.provider}
                   provider={addTarget.provider}
                   displayName={addTarget.displayName}
+                  {...addRow?.credential === undefined ? {} : { credential: addRow.credential }}
+                  {...addRow?.credentialChecks === undefined ? {} : { credentialChecks: addRow.credentialChecks }}
+                  {...addTarget.defaultBaseURL === undefined ? {} : { defaultBaseURL: addTarget.defaultBaseURL }}
+                  {...addTarget.baseURLEnv === undefined ? {} : { baseURLEnv: addTarget.baseURLEnv }}
+                  {...addTarget.nativeAuth === undefined ? {} : { nativeAuth: addTarget.nativeAuth }}
                   namespace={addNamespace}
                   schema={schema}
                   settingsPath={addTarget.settingsPath}
                   operations={operations}
+                  t={t}
                   readOnly={!state.writable}
                   onClose={(changed) => { closeEditor(changed, addTarget) }}
                 />
@@ -397,6 +426,7 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
                     protocols={protocols}
                     revision={state.namespaces.get('llm-pi-ai')?.revision ?? 0}
                     operations={operations}
+                    t={t}
                     readOnly={!state.writable}
                     onClose={(changed) => {
                       setDeclaring(false)

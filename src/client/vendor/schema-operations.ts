@@ -1,9 +1,9 @@
 /**
- * VENDORED from @deepseek-ai/dsh-client-ui-settings-models @ 0.1.5-rc.1
+ * VENDORED from @deepseek-ai/dsh-client-ui-settings-models @ 0.2.1-alpha.4
  * (host tree packages/client/ui-settings-models/src/client/schema-operations.ts) — copied
  * VERBATIM so the build is self-contained (no host checkout required).
  * Re-diff against the host source on every host upgrade (last verified
- * byte-identical @ 0.1.7-rc.2).
+ * byte-identical @ 0.2.1-alpha.4).
  */
 import type {
   SettingsSchemaService,

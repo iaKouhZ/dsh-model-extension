@@ -1,9 +1,9 @@
 /**
- * VENDORED from @deepseek-ai/dsh-client-ui-settings-models @ 0.1.5-rc.1
+ * VENDORED from @deepseek-ai/dsh-client-ui-settings-models @ 0.2.1-alpha.4
  * (host tree packages/client/ui-settings-models/src/client/operations.ts) — copied
  * VERBATIM so the build is self-contained (no host checkout required).
  * Re-diff against the host source on every host upgrade (last verified
- * byte-identical @ 0.1.7-rc.2).
+ * byte-identical @ 0.2.1-alpha.4).
  */
 /**
  * The Host reads and writes the Models cards perform, as callbacks built in the
@@ -14,7 +14,7 @@
 
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {
-  CredentialInfo, LlmDiscoveredModel, LlmModelDiscoveryRequest,
+  LlmDiscoveredModel, LlmModelDiscoveryRequest,
   SettingsNamespaceView, SettingsPathOpView,
 } from '@deepseek-ai/dsh-api-remotes/client'
 
@@ -39,12 +39,6 @@ export type ModelDiscoveryOutcome =
 
 /** The Host operations the Models page and its cards invoke. */
 export interface ModelsOperations {
-  /**
-   * Read one credential reference's state.
-   * @param ref - credential reference name.
-   * @returns the state, or undefined when the reference is unknown or the read was refused.
-   */
-  describeCredential(ref: string): Promise<CredentialInfo | undefined>
   /**
    * Store one credential literal under its reference.
    * @param ref - credential reference name.
@@ -88,10 +82,6 @@ export interface ModelsOperations {
  */
 export function createModelsOperations(ctx: ClientContext): ModelsOperations {
   return {
-    describeCredential: async (ref) => {
-      const response = await ctx.remote.credentials.describe([ref])
-      return response.ok ? response.value[ref] : undefined
-    },
     storeCredential: async (ref, value) => {
       const response = await ctx.remote.credentials.set(ref, value)
       return response.ok ? undefined : response.error.message

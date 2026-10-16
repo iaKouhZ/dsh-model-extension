@@ -11,7 +11,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { CredentialInfo, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { CredentialInfo, LlmNativeAuth, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import { Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import { deriveKeyRef, protocolChoices } from '../vendor/store.ts'
 import type { ModelsOperations } from '../vendor/operations.ts'
 import type { SettingsSchemaOperations } from '../vendor/schema-operations.ts'
@@ -19,6 +20,8 @@ import type { ModelDraft } from './compat.ts'
 import { compatFailureMessage, modelDrafts, normalizeModelRow, pathOps, validateModelRows } from './compat.ts'
 import { getPrefillIndex, sharedCatalogApi } from './models-index.ts'
 import type { PrefillIndex } from './models-index.ts'
+import type { ExtensionKey } from '../extension-meta.ts'
+import { ApiKeyInput } from './ApiKeyInput.tsx'
 import { ModelCatalog } from './ModelCatalog.tsx'
 import styles from './models-plus.module.css'
 
@@ -74,6 +77,91 @@ function refFor(
   return typeof named === 'string' && named.length > 0 ? named : deriveKeyRef(provider)
 }
 
+/** Copy keys and state facts of the credential field, derived without the translation table. */
+export interface CredentialView {
+  /** References the adapter consults, display filter applied. */
+  readonly visibleRefs: readonly string[]
+  /** First visible reference: what the placeholder and the `?` bubble name. */
+  readonly keyHint: string | undefined
+  /** Placeholder copy key. */
+  readonly placeholderKey: 'keyEnvLocked' | 'keyPlaceholder' | 'keyPlaceholderSaved' | 'keyPlaceholderFallback'
+  /** Reference the placeholder's `{hint}` takes, when its copy carries one. */
+  readonly placeholderHint: string | undefined
+  /** Status-line copy key, absent when no line renders. */
+  readonly hintKey?: 'keyFallbackMissing' | 'keyFallbackUnchecked' | 'keyFallbackDetected' | 'keyFallbackDetectedHidden'
+  /** Reference the status line's `{hint}` takes. */
+  readonly hintRef?: string
+  /** Status-line tone class. */
+  readonly hintTone?: 'notice' | 'savedNotice' | 'advancedHint'
+  /** References the `?` bubble lists, absent when no bubble renders. */
+  readonly helpRefs?: readonly string[]
+  /** The route authenticates without a key: the field does not render. */
+  readonly keyless: boolean
+  /** The credential provider is read-only: the field renders disabled. */
+  readonly locked: boolean
+}
+
+/**
+ * Judge the credential field the way the official card does: a profile's named
+ * reference decides alone, the directory's native variables stand in only when
+ * the profile names none, endpoint variables are not credentials, and oauth
+ * references stay out of the display without changing what the adapter reads.
+ *
+ * Kept free of the translation table so the judgement can be asserted directly.
+ * @param input - resolved profile facts plus the batch described credential state.
+ * @returns the copy keys and state facts the field renders from.
+ */
+export function credentialView(input: {
+  readonly namedRef: string | undefined
+  readonly nativeAuth: LlmNativeAuth | undefined
+  readonly baseURLEnv: readonly string[]
+  readonly keyDraft: string
+  readonly credential: CredentialInfo | undefined
+  readonly credentialChecks: Readonly<Record<string, CredentialInfo>> | undefined
+}): CredentialView {
+  const native = input.namedRef === undefined ? input.nativeAuth : undefined
+  const authRefs = input.namedRef === undefined
+    ? (native?.env ?? []).filter(ref => !input.baseURLEnv.includes(ref))
+    : [input.namedRef]
+  const visibleRefs = authRefs.filter(ref => !ref.toLowerCase().includes('oauth'))
+  const keyHint = visibleRefs[0]
+  const checked = authRefs.map(ref => [
+    ref,
+    input.credentialChecks?.[ref] ?? (ref === input.namedRef ? input.credential : undefined),
+  ] as const)
+  const detected = checked.find(([, info]) => info?.configured === true)
+  const detectedRef = detected?.[0]
+  const detectedVisible = detectedRef !== undefined && visibleRefs.includes(detectedRef) ? detectedRef : undefined
+  const missingRefs = checked.length > 0 && checked.every(([, info]) => info?.configured === false)
+  const savedCredential = detected?.[1]?.source === 'file'
+  // A read-only provider answers from the launch environment: nothing this page
+  // writes could replace it, so the field names that source and shows no state.
+  const locked = input.credential?.writable === false
+  const hint = locked || input.keyDraft.length > 0 || savedCredential || keyHint === undefined
+    ? undefined
+    : detectedRef === undefined
+      ? missingRefs
+        ? { key: 'keyFallbackMissing' as const, tone: 'notice' as const }
+        : { key: 'keyFallbackUnchecked' as const, tone: 'advancedHint' as const }
+      : detectedVisible === undefined
+        ? { key: 'keyFallbackDetectedHidden' as const, tone: 'advancedHint' as const }
+        : { key: 'keyFallbackDetected' as const, tone: 'savedNotice' as const }
+  return {
+    visibleRefs,
+    keyHint,
+    placeholderKey: locked
+      ? 'keyEnvLocked'
+      : keyHint === undefined
+        ? 'keyPlaceholder'
+        : savedCredential ? 'keyPlaceholderSaved' : 'keyPlaceholderFallback',
+    placeholderHint: keyHint,
+    ...hint === undefined ? {} : { hintKey: hint.key, hintRef: detectedVisible ?? keyHint, hintTone: hint.tone },
+    ...visibleRefs.length === 0 ? {} : { helpRefs: visibleRefs },
+    keyless: native !== undefined && native.env.length === 0 && native.oauth,
+    locked,
+  }
+}
+
 /** Props of {@link ProviderEditor}. */
 export interface ProviderEditorProps {
   /** Provider route id. */
@@ -90,6 +178,18 @@ export interface ProviderEditorProps {
   settingsPath: readonly string[]
   /** The Host operations this card writes and interrogates through. */
   operations: ModelsOperations
+  /** Endpoint the route uses when its profile sets no `baseURL`; absent when the adapter reports none. */
+  defaultBaseURL?: string
+  /** Environment variables used by the provider to construct its endpoint. */
+  baseURLEnv?: readonly string[]
+  /** Authentication the route performs when its profile names no credential reference; absent when the adapter reports none. */
+  nativeAuth?: LlmNativeAuth
+  /** Redacted state of the profile's named credential reference, from the page snapshot. */
+  credential?: CredentialInfo
+  /** Redacted checks for the named reference or the provider's native variables, from the page snapshot. */
+  credentialChecks?: Readonly<Record<string, CredentialInfo>>
+  /** Section copy. */
+  t: (key: ExtensionKey) => string
   /** Disable writes (read-only settings provider). */
   readOnly: boolean
   /** Close the editor; `changed` reports whether an Apply committed. */
@@ -106,7 +206,6 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
   const [draft, setDraft] = useState<Record<string, unknown>>(() => draftAt(schema, namespace, settingsPath))
   const [tab, setTab] = useState<'provider' | 'models'>('provider')
   const [keyDraft, setKeyDraft] = useState('')
-  const [keyState, setKeyState] = useState<CredentialInfo | undefined>(undefined)
   const [busy, setBusy] = useState(false)
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const [committedOriginal, setCommittedOriginal] = useState<unknown>(
@@ -140,18 +239,6 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
     })
     return () => { stale = true }
   }, [layout])
-
-  useEffect(() => {
-    // The account route has no page-managed credential to describe.
-    if (accountProvider) return
-    let stale = false
-    setKeyState(undefined)
-    void operations.describeCredential(keyRef).then((described) => {
-      if (stale) return
-      setKeyState(described)
-    })
-    return () => { stale = true }
-  }, [operations, keyRef, accountProvider])
 
   const stringAt = (source: unknown, key: string): string | undefined => {
     const value = schema.getPath(source, [key])
@@ -302,14 +389,32 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
   const defaultContextWindow = schema.getPath(fallback, ['defaultContextWindow'])
   const defaultMaxTokens = schema.getPath(fallback, ['maxTokens'])
 
-  const keyPlaceholder = keyState?.writable === false
-    ? '由启动环境提供（只读）'
-    : keyState?.configured === true
-      ? '已配置——输入新值可替换'
-      : layout === 'pi-ai' && props.declared === true
-        ? '输入 API 密钥，或留空使用环境认证'
-        : '输入 API 密钥'
-  const keyLocked = keyState?.writable === false
+  const view = credentialView({
+    namedRef: stringAt(fallback, 'apiKeyEnv'),
+    nativeAuth: props.nativeAuth,
+    baseURLEnv: props.baseURLEnv ?? [],
+    keyDraft,
+    credential: props.credential,
+    credentialChecks: props.credentialChecks,
+  })
+  const keyLocked = view.locked
+  const credentialHint = view.hintKey === undefined
+    ? undefined
+    : props.t(view.hintKey).replace('{hint}', () => view.hintRef ?? '')
+  // The bubble is the only place the fallback order is spelled out, and that
+  // copy carries `$cwd`/`$DSH_HOME` literals: a replacement callback keeps them
+  // out of the pattern interpretation.
+  const keyHelp = view.helpRefs === undefined
+    ? undefined
+    : props.t('keyHelp').replace('{env}', () => (view.helpRefs ?? []).join(' / '))
+  const authHelp = keyHelp === undefined
+    ? null
+    : (
+        <Tooltip label={keyHelp} side="right" delayMs={0} focusDelayMs={0} portal openOnClick>
+          <button type="button" className={styles['helpButton']} aria-label={props.t('authHelp')}>?</button>
+        </Tooltip>
+      )
+  const keyPlaceholder = props.t(view.placeholderKey).replace('{hint}', () => view.placeholderHint ?? '')
 
   return (
     <div className={styles['editor']}>
@@ -366,22 +471,36 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                         </div>
                       )
                     : null}
-                  <div className={styles['field']}>
-                    <label className={styles['fieldLabel']}>API 密钥</label>
-                    <input
-                      className={styles['input']}
-                      type="password"
-                      autoComplete="off"
-                      value={keyDraft}
-                      placeholder={keyPlaceholder}
-                      aria-label="API 密钥"
-                      disabled={disabled || keyLocked}
-                      onChange={(event) => { setKeyDraft(event.target.value) }}
-                    />
-                    {keyFailure === undefined
-                      ? null
-                      : <p className={styles['error']}>{keyFailure === 'keyBlank' ? '请输入 API 密钥；留空则保持已存储的密钥。' : '此 API 密钥格式无效，请检查。'}</p>}
-                  </div>
+                  {view.keyless
+                    ? null
+                    : (
+                        <div className={styles['field']}>
+                          <span className={styles['fieldLabel']}>
+                            {props.t('keyInput')}
+                            {authHelp}
+                          </span>
+                          <ApiKeyInput
+                            t={props.t}
+                            value={keyDraft}
+                            placeholder={keyPlaceholder}
+                            aria-label={props.t('keyInput')}
+                            aria-invalid={keyFailure !== undefined}
+                            aria-describedby={credentialHint === undefined ? undefined : `${props.provider}-credential-hint`}
+                            disabled={disabled || keyLocked}
+                            onChange={(event) => { setKeyDraft(event.target.value) }}
+                          />
+                          {credentialHint === undefined
+                            ? null
+                            : (
+                                <p id={`${props.provider}-credential-hint`} className={styles[view.hintTone ?? 'advancedHint']}>
+                                  {credentialHint}
+                                </p>
+                              )}
+                          {keyFailure === undefined
+                            ? null
+                            : <p className={styles['error']}>{props.t(keyFailure)}</p>}
+                        </div>
+                      )}
                   <div className={styles['field']}>
                     <label className={styles['fieldLabel']}>API 地址</label>
                     <input
