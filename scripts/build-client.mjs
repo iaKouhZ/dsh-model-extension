@@ -21,16 +21,19 @@ import { build } from 'tsdown'
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const PLUGIN_ID = 'dsh-model-extension'
 
-/** Platform module-table baseline (mirrors host packages/client/web/src/platform.ts @ 0.1.7-rc.2). */
+/** Platform module-table baseline (mirrors host packages/client/web/src/platform.ts @ 0.2.1-rc.2). */
 const PLATFORM_EXTERNALS = [
   'react',
   'react/jsx-runtime',
   'react-dom',
   'react-dom/client',
   '@deepseek-ai/cordis',
+  'zod',
+  '@tanstack/react-virtual',
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
+  '@deepseek-ai/dsh-client-ui-dockkit',
 ]
 
 const pkg = JSON.parse(readFileSync(join(projectRoot, 'package.json'), 'utf8'))

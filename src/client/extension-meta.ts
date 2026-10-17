@@ -4,15 +4,15 @@
  * top of the official Models page dictionaries.
  */
 
-/** Thinking levels offered by llm-pi-ai (THINKING_LEVEL_GATE @ 0.1.2-alpha.4). Only `off` may carry an empty wire value. */
+/** Thinking levels offered by llm-pi-ai (THINKING_LEVEL_GATE @ 0.2.1-rc.2). Only `off` may carry an empty wire value. */
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number]
 
-/** Input modalities accepted by llm-pi-ai (MODALITY_GATE @ 0.1.2-alpha.4). */
+/** Input modalities accepted by llm-pi-ai (MODALITY_GATE @ 0.2.1-rc.2). */
 export const MODALITIES = ['text', 'image'] as const
 export type Modality = (typeof MODALITIES)[number]
 
-/** Reasoning wire formats understood by llm-pi-ai (SUPPORTED_THINKING_FORMATS @ 0.1.2-alpha.4). */
+/** Reasoning wire formats understood by llm-pi-ai (SUPPORTED_THINKING_FORMATS @ 0.2.1-rc.2). */
 export const THINKING_FORMATS = [
   'openai',
   'deepseek',
@@ -30,7 +30,7 @@ export type ThinkingFormat = (typeof THINKING_FORMATS)[number]
 
 /**
  * The compatibility switches llm-pi-ai *offers*, by wire protocol (the `offer`
- * set of its COMPAT_GATES @ 0.1.5-rc.2). Only these may reach a model row: the
+ * set of its COMPAT_GATES @ 0.2.1-rc.2). Only these may reach a model row: the
  * adapter refuses a switch no protocol offers rather than ignoring it, so
  * copying pi-ai's catalog `compat` across verbatim would fail resolution on
  * the withheld fields it also records (routing preferences, session affinity,
@@ -169,7 +169,12 @@ export const en = {
   keyEnvLocked: 'Provided by the launch environment (read-only)',
   customized: 'Customized settings',
   baseUrl: 'Base URL',
-  baseUrlDefault: 'Provider default',
+  baseUrlDefault: 'No default endpoint',
+  baseUrlEnvironment: 'Provider endpoint configuration: {env}',
+  baseUrlConfigured: 'Provider-configured endpoint',
+  baseUrlPlaceholder: '{url}',
+  accountSignedIn: 'Signed in',
+  accountReadOnly: 'The account catalog comes from the account /models listing; per-model overrides live under modelOverrides in cordis.patch.yml.',
   models: 'Models',
   modelsInherited: 'Using the adapter defaults',
   modelsCustomized: 'Customized model catalog',
@@ -296,7 +301,12 @@ export const zh: { [K in ExtensionKey]: string } = {
   keyEnvLocked: '由启动环境提供（只读）',
   customized: '自定义设置',
   baseUrl: 'API 地址',
-  baseUrlDefault: '提供方默认',
+  baseUrlDefault: '没有默认地址',
+  baseUrlEnvironment: '提供方地址配置：{env}',
+  baseUrlConfigured: '由提供方配置地址',
+  baseUrlPlaceholder: '{url}',
+  accountSignedIn: '已登录',
+  accountReadOnly: '账号模型目录来自账号 /models 列表；单模型覆盖请在 cordis.patch.yml 的 modelOverrides 中配置。',
   models: '模型目录',
   modelsInherited: '正在使用适配器默认模型',
   modelsCustomized: '已自定义模型目录',

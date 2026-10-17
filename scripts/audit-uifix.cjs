@@ -7,7 +7,7 @@
  *  - the plugin-owned models-plus components ARE present
  *  - the extension enums / defaults / search constraints survived bundling
  *  - the server half carries the metadata routes, the fixed models.dev URL,
- *    and no host-version gate (admission is the host's peerDependency call)
+ *    and no host-version gate (admission is the host's engines.dsh call)
  */
 const fs = require('fs')
 
@@ -93,6 +93,24 @@ check('credential judgement is a module-level function', component('ProviderEdit
 check('no credential value reaches a settings path', !/\['apiKey'\]/.test(credentialUi))
 check('reasoning level choices stay unwired', !credentialUi.includes('reasoningLevelChoices'))
 check('single-reference describe helper removed', !fs.readFileSync('src/client/vendor/operations.ts', 'utf8').includes('describeCredential'))
+
+// --- 0.2.1-rc.2 adaptation: account read-only + reasoning gate --------------
+const providerEditor = component('ProviderEditor')
+const accountStart = providerEditor.indexOf(': accountProvider')
+const accountEnd = providerEditor.indexOf(': (', accountStart)
+const accountBranch = providerEditor.slice(accountStart, accountEnd)
+check('account card is read-only', accountBranch.includes('accountReadOnly') && !accountBranch.includes('ModelCatalog'))
+check('account row has no edit action', /deepseek-account'[\s\S]{0,80}?\? null/.test(component('ModelsPlusSection')))
+const compatSource = fs.readFileSync('src/client/models-plus/compat.ts', 'utf8')
+check('reasoning refusal gate wired',
+  ['ProviderEditor', 'CreateProviderCard'].every(name => component(name).includes('validateReasoningEfforts'))
+  && compatSource.includes('modelReasoningValueRequired') && compatSource.includes('modelReasoningNeedsLevel'))
+check('reasoning refusal copy in both dictionaries',
+  ['reasoningEffortEmptyWire', 'reasoningEffortsNeedNonOff'].every(key => counted(key) === 2))
+check('endpoint copy in both dictionaries',
+  ['baseUrlDefault', 'baseUrlEnvironment', 'baseUrlConfigured', 'baseUrlPlaceholder'].every(key => counted(key) === 2))
+check('account status copy in both dictionaries', counted('accountSignedIn') === 2)
+check('row actions gated on a ready snapshot', component('ModelsPlusSection').includes("state.status !== 'ready'"))
 
 console.log(failures === 0 ? 'AUDIT PASS' : `AUDIT FAIL (${String(failures)} failures)`)
 process.exitCode = failures === 0 ? 0 : 1

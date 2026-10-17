@@ -4,8 +4,8 @@
  * modules like operations/store/schema-operations are).
  *
  * ⚠️ Fork-copy risk: these must be re-checked against the pinned host sources
- * (packages/client/ui-settings-models/src/client/{ProviderEditor,DeepSeekModelsEditor}.tsx
- * — last verified unchanged @ 0.1.7-rc.2) on every host upgrade.
+ * (packages/client/ui-settings-models/src/client/{ProviderEditor,DeepSeekModelsEditor,ModelReasoningEfforts}.tsx
+ * — last verified unchanged @ 0.2.1-rc.2) on every host upgrade.
  */
 
 /** One model entry kept structurally open so hidden or future fields survive an edit. */
@@ -104,6 +104,7 @@ export interface ModelRowsValidationFailure {
   /** Message key owned by the Models+ dictionary. */
   key: 'modelIdRequired' | 'modelIdDuplicate' | 'modelNameInvalid' | 'modelContextInvalid'
   | 'modelMaxTokensInvalid' | 'modelCompatNotOffered'
+  | 'modelReasoningValueRequired' | 'modelReasoningNeedsLevel'
   /** For `modelCompatNotOffered`: the switch the protocol refuses. */
   field?: string
   /** For `modelCompatNotOffered`: the protocol the row resolves to. */
@@ -231,6 +232,56 @@ export function validateModelRows(value: unknown, api?: string): ModelRowsValida
         if (protocolOffers(api, field)) continue
         return { index, key: 'modelCompatNotOffered', field, api, offered: offeredCompatFields(api) }
       }
+    }
+  }
+  return undefined
+}
+
+// ---------------------------------------------------------------------------
+// reasoning-efforts validation — copied from ModelReasoningEfforts.tsx @ 0.2.1-rc.2
+// ---------------------------------------------------------------------------
+
+/** The declared levels of one row, as stored. */
+type ReasoningEntries = readonly (readonly [string, unknown])[]
+
+/**
+ * Whether pi-ai accepts one stored wire value: a non-empty string, or `null`
+ * for the `off` level (which sends nothing).
+ * @param level - the declared level.
+ * @param wire - the value stored for it.
+ * @returns whether the adapter would resolve the entry.
+ */
+function acceptedReasoningValue(level: string, wire: unknown): boolean {
+  return typeof wire === 'string' ? wire.length > 0 : wire === null && level === 'off'
+}
+
+/**
+ * Mirror the adapter's own refusals for a hand-declared `reasoningEfforts`
+ * field, so a card names the row instead of failing at write time.
+ *
+ * A declaration is refused when a non-off level carries an empty value (or a
+ * non-string that is not `off`'s `null`), and when it declares no level
+ * beyond `off`. An absent or `false` field means "does not reason" and
+ * passes; a `null` or `{}` field is a valueless declaration and is refused
+ * the same way the adapter refuses it.
+ * @param value - drafted `models` value, or undefined while inherited.
+ * @returns the first refused row, or undefined when the adapter accepts every row.
+ */
+export function validateReasoningEfforts(value: unknown): ModelRowsValidationFailure | undefined {
+  for (const [index, model] of modelDrafts(value).entries()) {
+    const raw = model['reasoningEfforts']
+    if (raw === undefined || raw === false) continue
+    const entries: ReasoningEntries | undefined = raw === null
+      ? []
+      : typeof raw === 'object' && !Array.isArray(raw)
+        ? Object.entries(raw)
+        : undefined
+    if (entries === undefined) continue
+    if (entries.some(([level, wire]) => !acceptedReasoningValue(level, wire))) {
+      return { index, key: 'modelReasoningValueRequired' }
+    }
+    if (!entries.some(([level]) => level !== 'off')) {
+      return { index, key: 'modelReasoningNeedsLevel' }
     }
   }
   return undefined

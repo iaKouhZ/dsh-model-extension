@@ -13,7 +13,7 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { deriveKeyRef } from '../vendor/store.ts'
 import type { ModelsOperations } from '../vendor/operations.ts'
 import type { ModelDraft } from './compat.ts'
-import { compatFailureMessage, normalizeModelRow, validateModelRows } from './compat.ts'
+import { compatFailureMessage, normalizeModelRow, validateModelRows, validateReasoningEfforts } from './compat.ts'
 import type { ExtensionKey } from '../extension-meta.ts'
 import { ApiKeyInput } from './ApiKeyInput.tsx'
 import { ModelCatalog } from './ModelCatalog.tsx'
@@ -71,7 +71,7 @@ export function CreateProviderCard(props: CreateProviderCardProps): ReactNode {
   const routeTaken = taken.includes(route)
   // The card states the protocol itself, so every row it drafts is judged by it
   // — the same protocol the adapter will resolve the route to.
-  const modelFailure = validateModelRows(models, protocol)
+  const modelFailure = validateModelRows(models, protocol) ?? validateReasoningEfforts(models)
   const keyFailure = ((): 'keyBlank' | 'keyIllegalCharacters' | undefined => {
     if (keyDraft.length === 0) return undefined
     const value = keyDraft.trim()
@@ -87,15 +87,23 @@ export function CreateProviderCard(props: CreateProviderCardProps): ReactNode {
   const ready = route.length > 0 && !routeInvalid && !routeTaken
     && baseURL.length > 0 && models.length > 0 && modelFailure === undefined
     && keyFailure === undefined
+  const modelFailureText = ((): string | undefined => {
+    if (modelFailure === undefined) return undefined
+    if (modelFailure.key === 'modelCompatNotOffered') return compatFailureMessage(modelFailure)
+    const copy: ExtensionKey = modelFailure.key === 'modelReasoningValueRequired'
+      ? 'reasoningEffortEmptyWire'
+      : modelFailure.key === 'modelReasoningNeedsLevel'
+        ? 'reasoningEffortsNeedNonOff'
+        : modelFailure.key
+    return `模型 ${String(modelFailure.index + 1)}：${props.t(copy)}`
+  })()
   const hint = failure !== undefined || ready || keyFailure !== undefined
     || route.length === 0 || routeInvalid || routeTaken
     ? undefined
     : baseURL.length === 0
       ? '自定义提供方需要填写 API 地址。'
-      : modelFailure !== undefined
-        ? modelFailure.key === 'modelCompatNotOffered'
-          ? compatFailureMessage(modelFailure)
-          : `模型 ${String(modelFailure.index + 1)}：${modelFailure.key}`
+      : modelFailureText !== undefined
+        ? modelFailureText
         : '自定义提供方至少需要一个模型。'
 
   /** Perform the create, returning a failure message or undefined. */

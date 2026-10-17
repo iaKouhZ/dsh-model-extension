@@ -17,7 +17,8 @@ import { deriveKeyRef, protocolChoices } from '../vendor/store.ts'
 import type { ModelsOperations } from '../vendor/operations.ts'
 import type { SettingsSchemaOperations } from '../vendor/schema-operations.ts'
 import type { ModelDraft } from './compat.ts'
-import { compatFailureMessage, modelDrafts, normalizeModelRow, pathOps, validateModelRows } from './compat.ts'
+import type { ModelRowsValidationFailure } from './compat.ts'
+import { compatFailureMessage, modelDrafts, normalizeModelRow, pathOps, validateModelRows, validateReasoningEfforts } from './compat.ts'
 import { getPrefillIndex, sharedCatalogApi } from './models-index.ts'
 import type { PrefillIndex } from './models-index.ts'
 import type { ExtensionKey } from '../extension-meta.ts'
@@ -266,7 +267,19 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
       ?? sharedCatalogApi(prefillIndex, props.provider)
     : undefined
 
+  /** One positioned, localised sentence for any model-row refusal. */
+  const describeModelFailure = (failure: ModelRowsValidationFailure): string => {
+    if (failure.key === 'modelCompatNotOffered') return compatFailureMessage(failure)
+    const copy: ExtensionKey = failure.key === 'modelReasoningValueRequired'
+      ? 'reasoningEffortEmptyWire'
+      : failure.key === 'modelReasoningNeedsLevel'
+        ? 'reasoningEffortsNeedNonOff'
+        : failure.key
+    return `模型 ${String(failure.index + 1)}：${props.t(copy)}`
+  }
+
   const modelFailure = validateModelRows(schema.getPath(draft, ['models']), routeApi)
+    ?? (layout === 'pi-ai' ? validateReasoningEfforts(schema.getPath(draft, ['models'])) : undefined)
   const keyFailure = ((): 'keyBlank' | 'keyIllegalCharacters' | undefined => {
     if (keyDraft.length === 0) return undefined
     const value = keyDraft.trim()
@@ -305,17 +318,8 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
       ? schema.setPath(draft, ['apiKeyEnv'], keyRef)
       : draft
     const rowFailure = validateModelRows(schema.getPath(next, ['models']), routeApi)
-    if (rowFailure !== undefined) {
-      return rowFailure.key === 'modelCompatNotOffered'
-        ? compatFailureMessage(rowFailure)
-        : `模型 ${String(rowFailure.index + 1)}：${{
-          modelIdRequired: '模型 ID 不能为空。',
-          modelIdDuplicate: '模型 ID 不能重复。',
-          modelNameInvalid: '显示名称不能为空。',
-          modelContextInvalid: '上下文窗口须为正数，如 131072、256K、1M。',
-          modelMaxTokensInvalid: '最大输出 token 数须为正数，如 8192、64K、1M。',
-        }[rowFailure.key]}`
-    }
+      ?? (layout === 'pi-ai' ? validateReasoningEfforts(schema.getPath(next, ['models'])) : undefined)
+    if (rowFailure !== undefined) return describeModelFailure(rowFailure)
     if (node !== undefined && settingsPath.length === 0) {
       const sectionError = schema.validate(node, next)
       if (sectionError !== undefined) return sectionError
@@ -415,6 +419,15 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
         </Tooltip>
       )
   const keyPlaceholder = props.t(view.placeholderKey).replace('{hint}', () => view.placeholderHint ?? '')
+  // Endpoint facts the adapter reports for a route that stores none: the
+  // catalogue default, or the environment variables that build it.
+  const baseURL = stringAt(fallback, 'baseURL') ?? props.defaultBaseURL
+  const endpointEnv = props.baseURLEnv ?? []
+  const endpointHint = layout === 'deepseek'
+    ? '该路由固定使用 Messages 协议，地址须指向兼容该协议的端点。'
+    : baseURL === undefined && endpointEnv.length > 0
+      ? props.t('baseUrlEnvironment').replace('{env}', () => endpointEnv.join(', '))
+      : undefined
 
   return (
     <div className={styles['editor']}>
@@ -422,24 +435,10 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
         ? <p className={styles['advancedHint']}>其余字段存于 settings.yaml；请直接编辑对应段。（{namespace.ns}）</p>
         : accountProvider
           ? (
-              /* No API key and no base URL: the platform's own model catalog is
-                 the whole card, and its list is never fetched (host @ 0.1.7-rc.2). */
-              <ModelCatalog
-                models={models}
-                overridden={modelsOverridden}
-                routeApi={routeApi}
-                defaultContextWindow={typeof defaultContextWindow === 'number' ? defaultContextWindow : undefined}
-                defaultMaxTokens={typeof defaultMaxTokens === 'number' ? defaultMaxTokens : undefined}
-                probe={probe}
-                probeBlocked={keyFailure}
-                hideFetch
-                operations={operations}
-                disabled={disabled}
-                onChange={(rows: ModelDraft[]) => {
-                  setDraft(current => schema.setPath(current, ['models'], rows))
-                }}
-                onReset={() => { setDraft(current => schema.deletePath(current, ['models'])) }}
-              />
+              /* The account catalog is owned by the account /models listing and
+                 its per-model overrides live in cordis.patch.yml, so this card
+                 has nothing editable (host @ 0.2.1-rc.2). */
+              <p className={styles['advancedHint']}>{props.t('accountReadOnly')}</p>
             )
           : (
             <>
@@ -509,14 +508,17 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                       value={stringAt(draft, 'baseURL') ?? ''}
                       placeholder={layout === 'deepseek'
                         ? DEEPSEEK_BASE_URL
-                        : stringAt(fallback, 'baseURL') ?? '提供方默认'}
+                        : baseURL === undefined
+                          ? props.t(endpointEnv.length > 0 ? 'baseUrlConfigured' : 'baseUrlDefault')
+                          : props.t('baseUrlPlaceholder').replace('{url}', () => baseURL)}
+                      aria-describedby={endpointHint === undefined ? undefined : `${props.provider}-endpoint-hint`}
                       aria-label="API 地址"
                       disabled={disabled}
                       onChange={(event) => { setField('baseURL', event.target.value === '' ? undefined : event.target.value) }}
                     />
-                    {layout === 'deepseek'
-                      ? <span className={styles['advancedHint']}>该路由固定使用 Messages 协议，地址须指向兼容该协议的端点。</span>
-                      : null}
+                    {endpointHint === undefined
+                      ? null
+                      : <span id={`${props.provider}-endpoint-hint`} className={styles['advancedHint']}>{endpointHint}</span>}
                   </div>
                   {layout === 'pi-ai' && props.declared === true
                     ? (
@@ -563,13 +565,7 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
       {failure !== undefined ? <p className={styles['error']}>{failure}</p> : null}
       {modelFailure === undefined
         ? null
-        : (
-            <p className={styles['advancedHint']}>
-              {modelFailure.key === 'modelCompatNotOffered'
-                ? compatFailureMessage(modelFailure)
-                : `模型 ${String(modelFailure.index + 1)}：${modelFailure.key}`}
-            </p>
-          )}
+        : <p className={styles['advancedHint']}>{describeModelFailure(modelFailure)}</p>}
 
       <div className={styles['editorActions']}>
         <button

@@ -18,6 +18,7 @@
 .rowTag { flex: none; padding: 1px 6px; border: 0.5px solid var(--dsw-alias-border-l3); border-radius: 4px; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-secondary); }
 .credentialDot { box-sizing: border-box; display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%; }
 .credentialDotConfigured { background: var(--dsw-alias-state-success-primary); }
+.accountStatus { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 18px; color: var(--dsw-alias-state-success-primary); }
 .credentialDotMissing { background: var(--dsw-alias-state-error-primary); }
 .rowActions { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
 

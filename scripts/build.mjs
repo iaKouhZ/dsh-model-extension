@@ -5,8 +5,9 @@
  * src/client/vendor/ (verbatim copies, see their headers), so no host
  * checkout is needed to build. No host version is injected here and none is
  * gated on at runtime: the host admits or denies this package from its own
- * `@deepseek-ai/dsh*` peerDependencies in package.json, which is the single
- * source of truth for the compatible host range.
+ * `engines.dsh` range in package.json, which is the single source of truth
+ * for the compatible host range (peerDependencies still declare the runtime
+ * packages pnpm resolves).
  */
 import { mkdirSync, rmSync } from 'node:fs'
 import { resolve, dirname, join } from 'node:path'

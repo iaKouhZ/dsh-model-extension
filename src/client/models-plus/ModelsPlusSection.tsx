@@ -315,6 +315,14 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
                   {row.entry.declared === true
                     ? <span className={styles['rowTag']}>自定义</span>
                     : null}
+                  {row.entry.provider === 'deepseek-account'
+                    ? (
+                        <span className={styles['accountStatus']}>
+                          <span className={`${styles['credentialDot']} ${styles['credentialDotConfigured']}`} aria-hidden="true" />
+                          {t('accountSignedIn')}
+                        </span>
+                      )
+                    : null}
                   {credentialConfigured
                     ? (
                         <span
@@ -336,27 +344,34 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
                       : null}
                 </span>
                 <span className={styles['rowActions']}>
-                  <button
-                    type="button"
-                    className={styles['secondaryButton']}
-                    aria-label={providerCopy('编辑 {provider}', target)}
-                    onClick={() => {
-                      setSavedTarget(undefined)
-                      setDeclaring(false)
-                      setAdding(false)
-                      setEditing(open ? undefined : target)
-                    }}
-                  >
-                    编辑
-                  </button>
+                  {row.entry.provider === 'deepseek-account'
+                    ? null
+                    : (
+                        <button
+                          type="button"
+                          className={styles['secondaryButton']}
+                          aria-label={providerCopy('编辑 {provider}', target)}
+                          disabled={!open && state.status !== 'ready'}
+                          onClick={() => {
+                            if (!open && state.status !== 'ready') return
+                            setSavedTarget(undefined)
+                            setDeclaring(false)
+                            setAdding(false)
+                            setEditing(open ? undefined : target)
+                          }}
+                        >
+                          编辑
+                        </button>
+                      )}
                   {row.removable
                     ? (
                         <button
                           type="button"
                           className={styles['dangerButton']}
                           aria-label={providerCopy('删除 {provider}', target)}
-                          disabled={!state.writable}
+                          disabled={!state.writable || state.status !== 'ready'}
                           onClick={() => {
+                            if (state.status !== 'ready') return
                             setSavedTarget(undefined)
                             setDeleteFailure(undefined)
                             setDeleteTarget(target)
@@ -441,8 +456,9 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
                     <button
                       type="button"
                       className={styles['addButton']}
-                      disabled={addable.length === 0 || !state.writable}
+                      disabled={addable.length === 0 || !state.writable || state.status !== 'ready'}
                       onClick={() => {
+                        if (state.status !== 'ready') return
                         const first = addable[0]
                         if (first === undefined) return
                         setSavedTarget(undefined)
@@ -461,8 +477,9 @@ function Loaded({ injected }: { injected: ModelsPlusInjected }): ReactNode {
                     <button
                       type="button"
                       className={styles['addButton']}
-                      disabled={protocols.length === 0 || !state.writable}
+                      disabled={protocols.length === 0 || !state.writable || state.status !== 'ready'}
                       onClick={() => {
+                        if (state.status !== 'ready') return
                         setSavedTarget(undefined)
                         setAdding(false)
                         setEditing(undefined)

@@ -1,7 +1,7 @@
 # dsh-model-extension
 > 基于 deepseek-harness 的模型扩展插件
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE) [![npm](https://img.shields.io/npm/v/dsh-model-extension.svg?label=npm&labelColor=000000&color=ff4b01)](https://www.npmjs.com/package/dsh-model-extension) [![DeepSeek Harness:0.2.0-rc.1](https://img.shields.io/badge/DeepSeek%20Harness-0.2.0--rc.1-success.svg?labelColor=4D6BFE)](https://github.com/deepseek-ai/deepseek-harness) [![Desktop: supported](https://img.shields.io/badge/Desktop-supported-success.svg?labelColor=4D6BFE)](#安装)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE) [![npm](https://img.shields.io/npm/v/dsh-model-extension.svg?label=npm&labelColor=000000&color=ff4b01)](https://www.npmjs.com/package/dsh-model-extension) [![DeepSeek Harness:0.2.1-rc.2](https://img.shields.io/badge/DeepSeek%20Harness-0.2.1--rc.2-success.svg?labelColor=4D6BFE)](https://github.com/deepseek-ai/deepseek-harness) [![Desktop: supported](https://img.shields.io/badge/Desktop-supported-success.svg?labelColor=4D6BFE)](#安装)
 
 | 供应商 | 模型 |
 | --- | --- |
@@ -20,7 +20,7 @@
 - API 密钥字段与官方模型页同一套口径：优先使用已保存的凭据，其次按顺序回落到启动环境、`$cwd/.env`、`$DSH_HOME/.env`；字段旁提供认证说明气泡与密钥显示/隐藏切换，并如实提示环境变量的检测结果。
 - 支持通过 `models.json` 元数据自动预填。可通过插件下载或自行下载并放到 `$DSH_HOME/models.json` 供插件使用。
     - **仅支持`https://models.dev/models.json`数据格式**。
-- 支持 **DeepSeek 账号**路由（`deepseek-account`）：置顶显示，无可用模型时整行隐藏；编辑卡片只含模型目录（账号不使用 API 密钥与地址）。
+- 支持 **DeepSeek 账号**路由（`deepseek-account`）：置顶显示，无可用模型时整行隐藏；模型目录由账号的 `/models` 列表提供，本页只读展示登录状态（单模型覆盖请在 `cordis.patch.yml` 的 `modelOverrides` 中配置）。
 - 所有保存走 DSH 原生 `settings.mutate`，落盘 `$DSH_HOME/settings.yaml`。
 
 ## 安装
@@ -55,6 +55,9 @@ npm run build
 ## 版本历史
 
 - **1.3.3**
+    - 更改插件兼容性定义为 engines.dsh
+    - 💪适配 deepseek harness 0.2.1-rc.2
+    - npm publish 1.3.3
     - **1.3.3-alpha.1**
         - 💪同步官方API密钥保存&读取策略
         - 💪其他UI优化

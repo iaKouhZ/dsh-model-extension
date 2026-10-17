@@ -4,8 +4,8 @@ const srv = require('fs').readFileSync('lib/index.js', 'utf8')
 
 console.log('== server half ==')
 // The runtime version gate is gone by design — the host admits or denies this
-// package from its own `@deepseek-ai/dsh*` peerDependencies — so guard against
-// it (and its build-time anchor constant) sneaking back in.
+// package from its own `engines.dsh` range — so guard against it (and its
+// build-time anchor constant) sneaking back in.
 console.log('no host-version gate:', !srv.includes('readHostVersion') && !srv.includes('validated anchor'))
 console.log('DSH_HOME still honored (metadata dir):', srv.includes('DSH_HOME'))
 
